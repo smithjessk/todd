@@ -1,0 +1,24 @@
+* Todd
+
+A GTD implementation in Ocaml. Was my senior project at school, and now I use it
+daily- pretty cool!
+
+It's not /really/ built to run on anyone else's computer. (I tried to find a link
+to that Jess Fraz post re: software vs. programs ~ running on your computer vs. 
+running on my computer, but alas..)
+
+** Oddities
+
+- the Postgres port number for the client are hardcoded
+- the Jar of Awesome tool is bundled in here, despite being separable
+- UI framework isn't factored out so we can run on different clients / can use Cram tests
+- links are always opened in firefox
+- searches are always through duckduckgo
+- requires xclip, copy, and running on a Unix box
+
+* LICENSING
+
+Some of this repository includes code from Lambda Term. As per that codebase's
+license agreement, please see *LAMBDA-TERM-LICENSE* before distributing any of
+this code. Of course, that license does not apply to this whole codebase, but I
+included it to meet his licensure requirements.

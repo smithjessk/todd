@@ -1,0 +1,5 @@
+This dir can be deployed onto Heroku (see the Procfile). It requires a null
+buildpack. See this link to grok the process of deploying a binary on Heroku:
+https://medium.com/cryptosense-tech/how-to-deploy-ocaml-on-heroku-9903548aafa5
+The main difference is that, here, I use dune, which is friendly and generates,
+e.g., Merlin files.

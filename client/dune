@@ -1,0 +1,4 @@
+(executable
+  (name client)
+  (libraries core caqti caqti-lwt caqti-driver-postgresql todd_common lambda-term str)
+  (preprocess (pps ppx_jane ppx_let lwt_ppx ppx_variants_conv)))

@@ -1,0 +1,4 @@
+(executable
+  (name joa_reminder)
+  (libraries core caqti caqti-lwt caqti-driver-postgresql)  
+  (preprocess (pps ppx_jane ppx_let lwt_ppx ppx_variants_conv)))

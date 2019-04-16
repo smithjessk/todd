@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# $1 is the prompt, $2 is the result
+function print_bold () {
+    bold=$(tput bold)
+    normal=$(tput sgr0)
+    echo "${bold}$1${normal}"
+    while read -r line; do
+        echo -e -n "\t"
+        echo "$line"
+    done <<< "$result"
+}
+
+arg="$@"
+function print_each_line_with_tab () {
+    result=$(t d $1 | grep -i "$arg")
+    print_bold "$1" "$result"
+}
+
+print_each_line_with_tab "someday"
+print_each_line_with_tab "maybe"
+print_each_line_with_tab "waiting-for"
+print_each_line_with_tab "collect"
+print_each_line_with_tab "actions"
+
+# more specific action search
+result=$(t d a -p "$arg")
+print_bold "actions" "$result"

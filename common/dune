@@ -1,0 +1,4 @@
+(library
+  (name todd_common)
+  (libraries core caqti)
+  (preprocess (pps ppx_fields_conv ppx_sexp_conv ppx_variants_conv ppx_compare)))

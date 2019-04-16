@@ -1,0 +1,4 @@
+(executable
+  (name collector)
+  (libraries core_kernel caqti caqti-lwt caqti-driver-postgresql cohttp-lwt-unix)
+  (preprocess (pps lwt_ppx)))
