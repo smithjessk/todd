@@ -15,7 +15,8 @@ let add_to_collect_box item =
     Caqti_request.exec Caqti_type.string
       "INSERT INTO collected_item (text) VALUES (?)"
   in
-  Db.exec req item >>= Caqti_lwt.or_fail
+  Db.exec req item
+  >>= fun result -> Db.disconnect () >>= fun () -> Caqti_lwt.or_fail result
 
 let collect _ req_body =
   let%lwt req_body = Cohttp_lwt.Body.to_string req_body in
