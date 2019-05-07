@@ -1,7 +1,7 @@
 open Core
 
 let () =
-  Command.group ~summary:"The world's best Ocaml GTD implementation"
+  Command.group ~summary:"No comment :)"
     [ ("dump", Dump.cmd)
     ; ("collect", Collect.cmd)
     ; ("insert", Insert.cmd)
