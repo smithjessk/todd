@@ -9,7 +9,7 @@ end
 type list_type = Collect | Maybe | Someday | Waiting | Action
 
 (** produces an offset that's used to find the next item, if any *)
-let handle_item term ~delete ~position_prompt reviewing item =
+let handle_item term ~position_prompt reviewing item =
   let {Reviewable.prompt; item} = item in
   LTerm.clear_screen term
   >>= fun () ->
@@ -29,6 +29,14 @@ let handle_item term ~delete ~position_prompt reviewing item =
     try Tui_action_for_processed_item.with_prefix_exn s |> Lwt.return
     with _ -> loop ()
   in
+  let delete =
+    match reviewing with
+    | Someday -> Db.delete_someday
+    | Action -> Db.delete_action_with_text
+    | Maybe -> Db.delete_maybe
+    | Waiting -> Db.delete_waiting_for
+    | Collect -> Db.delete_collected_item
+  in
   loop ()
   >>= fun x ->
   let del_or_no_op inserted_to () =
@@ -38,8 +46,11 @@ let handle_item term ~delete ~position_prompt reviewing item =
   in
   match x with
   | _, Tui_action_for_processed_item.Move_to_maybe ->
+      let item = sprintf "%s%s" prompt item in
       Db.insert_maybe item >>= del_or_no_op Maybe
-  | _, Move_to_someday -> Db.insert_someday item >>= del_or_no_op Someday
+  | _, Move_to_someday ->
+      let item = sprintf "%s%s" prompt item in
+      Db.insert_someday item >>= del_or_no_op Someday
   | _, Move_to_actions ->
       Next_action_builder.create term
       >>= fun na -> Db.define na >>= del_or_no_op Action
@@ -56,12 +67,12 @@ let handle_item term ~delete ~position_prompt reviewing item =
       Utils.search ~unescaped:item
       >>= fun _ -> LTerm.printl "Searched" >|= fun () -> 0
 
-let handle_items ~term all ~reviewing ~delete =
+let handle_items ~term all ~reviewing =
   let rec loop idx =
     match List.nth all idx with
     | None -> Lwt.return ()
     | Some e ->
-        handle_item term reviewing e ~delete
+        handle_item term reviewing e
           ~position_prompt:(sprintf "%d/%d" idx (List.length all - 1))
         >>= fun offset -> loop (idx + offset)
   in
@@ -111,7 +122,7 @@ let text_search_param =
     (Flag.optional Param.string)
     ~doc:" text. Case insensitive substring search"
 
-let review_cmd cmd_name ~dump ~delete ~reviewing =
+let review_cmd cmd_name ~dump ~reviewing =
   let f o t () =
     Lazy.force LTerm.stdout
     >>= fun term ->
@@ -124,7 +135,7 @@ let review_cmd cmd_name ~dump ~delete ~reviewing =
                 let a = f i.Reviewable.item in
                 let substring = f substring in
                 String.is_substring a ~substring )
-    >>= fun items -> handle_items ~term ~delete items ~reviewing
+    >>= fun items -> handle_items ~term items ~reviewing
   in
   let open Command.Let_syntax in
   ( cmd_name
@@ -163,10 +174,7 @@ let action_cmd =
       in
       let f () =
         Lazy.force LTerm.stdout
-        >>= fun term ->
-        dump ()
-        >>= handle_items ~term ~reviewing:Action
-              ~delete:Db.delete_action_with_text
+        >>= fun term -> dump () >>= handle_items ~term ~reviewing:Action
       in
       Fn.compose Lwt_main.run f]
 
@@ -180,14 +188,14 @@ let cmd =
   Command.group ~summary:"Different ways to review"
     [ review_cmd "someday"
         ~dump:(Fn.compose no_prompt Db.dump_someday)
-        ~delete:Db.delete_someday ~reviewing:Someday
+        ~reviewing:Someday
     ; review_cmd "maybe"
         ~dump:(Fn.compose no_prompt Db.dump_maybe)
-        ~delete:Db.delete_maybe ~reviewing:Maybe
+        ~reviewing:Maybe
     ; ("actions", action_cmd)
     ; review_cmd "waiting"
         ~dump:(Fn.compose no_prompt Db.dump_waiting_for)
-        ~delete:Db.delete_waiting_for ~reviewing:Waiting
+        ~reviewing:Waiting
     ; review_cmd "collect"
         ~dump:
           (Fn.compose
@@ -197,4 +205,4 @@ let cmd =
                >|= List.map ~f:(fun t -> {Reviewable.item= text t; prompt= None}
                    ) )
              Db.dump_collected)
-        ~delete:Db.delete_collected_item ~reviewing:Collect ]
+        ~reviewing:Collect ]
