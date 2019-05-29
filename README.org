@@ -16,6 +16,12 @@ running on my computer, but alas..)
 - searches are always through duckduckgo
 - requires xclip, copy, and running on a Unix box
 
+** Neat things
+
+I alias `t`  to `todd` in my own shell. I didn't include this in the setup
+process, though, because it seems too-likely to have name collisions. 
+
+
 * LICENSING
 
 Some of this repository includes code from Lambda Term. As per that codebase's
