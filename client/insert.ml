@@ -3,11 +3,12 @@ open Lwt.Infix
 
 let get_text ?batched_text () =
   match batched_text with
-  | Some s -> Lwt.return s
+  | Some s ->
+      Lwt.return s
   | None ->
       Lazy.force LTerm.stdout
       >>= fun term ->
-      (new Ui.read_line_const_prompt ~term ~prompt:"Text: ")#run
+      (new Ui.read_line_const_prompt ~term ~prompt:"Text: ")#run_utf8_conv
 
 let insert_waiting_cmd =
   let f () = get_text () >>= Db.insert_waiting_for in

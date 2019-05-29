@@ -24,25 +24,32 @@ let handle_item term ~position_prompt reviewing item =
        ~options:
          ( Map.keys Tui_action_for_processed_item.bindings
          |> List.map ~f:Char.to_string ))
-      #run
+      #run_utf8_conv
     >>= fun s ->
     try Tui_action_for_processed_item.with_prefix_exn s |> Lwt.return
     with _ -> loop ()
   in
   let delete =
     match reviewing with
-    | Someday -> Db.delete_someday
-    | Action -> Db.delete_action_with_text
-    | Maybe -> Db.delete_maybe
-    | Waiting -> Db.delete_waiting_for
-    | Collect -> Db.delete_collected_item
+    | Someday ->
+        Db.delete_someday
+    | Action ->
+        Db.delete_action_with_text
+    | Maybe ->
+        Db.delete_maybe
+    | Waiting ->
+        Db.delete_waiting_for
+    | Collect ->
+        Db.delete_collected_item
   in
   loop ()
   >>= fun x ->
   let del_or_no_op inserted_to () =
     match inserted_to with
-    | x when x = reviewing -> Lwt.return 1
-    | _ -> delete item >>= fun () -> Lwt.return 1
+    | x when x = reviewing ->
+        Lwt.return 1
+    | _ ->
+        delete item >>= fun () -> Lwt.return 1
   in
   match x with
   | _, Tui_action_for_processed_item.Move_to_maybe ->
@@ -54,12 +61,15 @@ let handle_item term ~position_prompt reviewing item =
   | _, Move_to_actions ->
       Next_action_builder.create term
       >>= fun na -> Db.define na >>= del_or_no_op Action
-  | _, Delete -> delete item >|= fun () -> 1
+  | _, Delete ->
+      delete item >|= fun () -> 1
   | _, Copy_to_clipboard ->
       Utils.copy ~unescaped:item
       >>= fun _ -> LTerm.printl "Copied" >|= fun () -> 0
-  | cnt, Jump_to_next -> Lwt.return cnt
-  | cnt, Jump_to_previous -> Lwt.return (Int.neg cnt)
+  | cnt, Jump_to_next ->
+      Lwt.return cnt
+  | cnt, Jump_to_previous ->
+      Lwt.return (Int.neg cnt)
   | _, Open_link ->
       Utils.open_link ~unescaped:item
       >>= fun _ -> LTerm.printl "Opened" >|= fun () -> 0
@@ -70,7 +80,8 @@ let handle_item term ~position_prompt reviewing item =
 let handle_items ~term all ~reviewing =
   let rec loop idx =
     match List.nth all idx with
-    | None -> Lwt.return ()
+    | None ->
+        Lwt.return ()
     | Some e ->
         handle_item term reviewing e
           ~position_prompt:(sprintf "%d/%d" idx (List.length all - 1))
@@ -129,7 +140,8 @@ let review_cmd cmd_name ~dump ~reviewing =
     dump () >|= Ordering.act o
     >|= List.filter ~f:(fun i ->
             match t with
-            | None -> true
+            | None ->
+                true
             | Some substring ->
                 let f = String.lowercase in
                 let a = f i.Reviewable.item in

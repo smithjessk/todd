@@ -33,15 +33,24 @@ end = struct
 
   let bindings =
     let to_string = function
-      | Move_to_maybe -> 'm'
-      | Move_to_someday -> 's'
-      | Move_to_actions -> 'd'
-      | Delete -> 'x'
-      | Copy_to_clipboard -> 'y'
-      | Jump_to_next -> 'j'
-      | Jump_to_previous -> 'k'
-      | Open_link -> 'o'
-      | Search -> '/'
+      | Move_to_maybe ->
+          'm'
+      | Move_to_someday ->
+          's'
+      | Move_to_actions ->
+          'd'
+      | Delete ->
+          'x'
+      | Copy_to_clipboard ->
+          'y'
+      | Jump_to_next ->
+          'j'
+      | Jump_to_previous ->
+          'k'
+      | Open_link ->
+          'o'
+      | Search ->
+          '/'
     in
     let f t m _ = Map.add_exn m ~key:(to_string t) ~data:t in
     let m =
@@ -56,35 +65,45 @@ end = struct
 
   let with_prefix_exn s =
     match Map.find bindings s.[String.length s - 1] with
-    | None -> raise (Invalid_argument s)
+    | None ->
+        raise (Invalid_argument s)
     | Some t -> (
       match String.length s with
-      | 1 -> (1, t)
-      | _ -> (int_of_string (String.sub s ~pos:0 ~len:(String.length s - 1)), t)
-      )
+      | 1 ->
+          (1, t)
+      | _ ->
+          (int_of_string (String.sub s ~pos:0 ~len:(String.length s - 1)), t) )
 end
 
 class read_line_const_prompt_options ~term ~prompt ~options =
   object (self)
     inherit LTerm_read_line.read_line ()
 
-    inherit [Zed_utf8.t] LTerm_read_line.term term
+    inherit [Zed_string.t] LTerm_read_line.term term
 
     method! completion =
       let prefix = Zed_rope.to_string self#input_prev in
+      let options = List.map options ~f:Zed_string.of_utf8 in
       let options =
-        List.filter ~f:(fun opt -> Zed_utf8.starts_with opt prefix) options
+        List.filter ~f:(fun opt -> Zed_string.starts_with opt ~prefix) options
       in
-      self#set_completion 0 (List.map ~f:(fun opt -> (opt, " ")) options)
+      self#set_completion 0
+        (List.map ~f:(fun opt -> (opt, Zed_string.of_utf8 " ")) options)
 
-    initializer self#set_prompt (S.const (prompt |> LTerm_text.of_string))
+    initializer
+    self#set_prompt
+      (S.const (prompt |> Zed_string.of_utf8 |> LTerm_text.of_string))
+
+    method run_utf8_conv =
+      let open Lwt.Infix in
+      self#run >|= Zed_string.to_utf8
   end
 
 class read_line_const_prompt ~term ~prompt =
   object (self)
     inherit LTerm_read_line.read_line ()
 
-    inherit [Zed_utf8.t] LTerm_read_line.term term
+    inherit [Zed_string.t] LTerm_read_line.term term
 
     initializer
     self#set_prompt
@@ -93,4 +112,8 @@ class read_line_const_prompt ~term ~prompt =
          eval [B_bold true; S prompt; E_bold]))
 
     method! show_box = false
+
+    method run_utf8_conv =
+      let open Lwt.Infix in
+      self#run >|= Zed_string.to_utf8
   end
