@@ -1,12 +1,11 @@
 open Core
 
-(** These utils are *begging* to be designed better. So much code reuse
-here it makes my eyes bleed *)
+(** Should be refactored! But also these aren't totally widely compatible, so...
+*)
 
 let copy ~unescaped =
   let text = unescaped |> String.escaped in
-  sprintf "echo -n \"%s\" | xclip -i -selection clipboard" text
-  |> Lwt_unix.system
+  sprintf "printf \"%s\" | pbcopy" text |> Lwt_unix.system
 
 let open_link ~unescaped =
   let text = unescaped |> String.escaped in
