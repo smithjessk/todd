@@ -76,6 +76,8 @@ let handle_item term ~position_prompt reviewing item =
   | _, Search ->
       Utils.search ~unescaped:item
       >>= fun _ -> LTerm.printl "Searched" >|= fun () -> 0
+  | _, Quit ->
+      exit 0
 
 let handle_items ~term all ~reviewing =
   let rec loop idx =

@@ -12,6 +12,7 @@ module Tui_action_for_processed_item : sig
     | Jump_to_previous
     | Open_link
     | Search
+    | Quit
 
   val bindings : t Char.Map.t
 
@@ -29,6 +30,7 @@ end = struct
     | Jump_to_previous
     | Open_link
     | Search
+    | Quit
   [@@deriving variants]
 
   let bindings =
@@ -51,12 +53,14 @@ end = struct
           'o'
       | Search ->
           '/'
+      | Quit ->
+          'q'
     in
     let f t m _ = Map.add_exn m ~key:(to_string t) ~data:t in
     let m =
       Variants.fold ~init:Char.Map.empty ~move_to_maybe:(f Move_to_maybe)
         ~move_to_someday:(f Move_to_someday)
-        ~move_to_actions:(f Move_to_actions) ~delete:(f Delete)
+        ~move_to_actions:(f Move_to_actions) ~delete:(f Delete) ~quit:(f Quit)
         ~copy_to_clipboard:(f Copy_to_clipboard) ~jump_to_next:(f Jump_to_next)
         ~jump_to_previous:(f Jump_to_previous) ~open_link:(f Open_link)
         ~search:(f Search)
