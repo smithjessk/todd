@@ -1,18 +1,18 @@
 open Core
 
-(** These utils are *begging* to be designed better. So much code reuse
-here it makes my eyes bleed *)
+(** Haven't tested b/c new computer doesn't have the right executables (yet)
+*)
 
-let copy ~unescaped =
+let escaped_cmd ~unescaped escaped_to_cmd =
   let text = unescaped |> String.escaped in
-  sprintf "echo -n \"%s\" | xclip -i -selection clipboard" text
-  |> Lwt_unix.system
+  let s = escaped_to_cmd text in
+  Lwt_unix.system s
 
-let open_link ~unescaped =
-  let text = unescaped |> String.escaped in
-  Lwt_unix.system (sprintf "firefox \"%s\" &" text)
+let copy =
+  escaped_cmd (fun text ->
+      sprintf "echo -n \"%s\" | xclip -i -selection clipboard" text )
+
+let open_link = escaped_cmd (fun text -> sprintf "firefox \"%s\" &" text)
 
 let search ~unescaped =
-  let text = unescaped |> String.escaped in
-  let url = sprintf "https://duckduckgo.com/?q=%s" text in
-  Lwt_unix.system (sprintf "firefox \"%s\" &" url)
+  open_link ~unescaped:(sprintf "https://duckduckgo.com/?q=%s" unescaped)
