@@ -78,6 +78,8 @@ let handle_item term ~position_prompt reviewing item =
       >>= fun _ -> LTerm.printl "Searched" >|= fun () -> 0
   | _, Quit ->
       exit 0
+  | _, Help ->
+      LTerm.printl Tui_action_for_processed_item.help >|= fun () -> 0
 
 let handle_items ~term all ~reviewing =
   let rec loop idx =

@@ -1,7 +1,7 @@
 open Core
 open Lwt.Infix
 
-let get_text ?batched_text () =
+let get_text batched_text =
   match batched_text with
   | Some s ->
       Lwt.return s
@@ -10,20 +10,25 @@ let get_text ?batched_text () =
       >>= fun term ->
       (new Ui.read_line_const_prompt ~term ~prompt:"Text: ")#run_utf8_conv
 
-let insert_waiting_cmd =
-  let f () = get_text () >>= Db.insert_waiting_for in
-  Command.basic ~summary:"Insert things into waiting for list"
-    (Command.Param.return (Fn.compose Lwt_main.run f))
+let make insert s =
+  let open Command.Let_syntax in
+  Command.basic ~summary:s
+    [%map_open
+      let batched_text =
+        flag "batch" (optional string) ~doc:" Don't read from STDIN"
+      in
+      let f () = get_text batched_text >>= insert in
+      Fn.compose Lwt_main.run f]
 
-let insert_maybe_cmd =
-  let f () = get_text () >>= Db.insert_maybe in
-  Command.basic ~summary:"Insert things into maybe list"
-    (Command.Param.return (Fn.compose Lwt_main.run f))
+let insert_waiting_cmd =
+  make Db.insert_waiting_for "Insert things into waiting for list"
+
+let insert_maybe_cmd = make Db.insert_maybe "Insert into maybe"
 
 let insert_someday_cmd =
-  let f () = get_text () >>= Db.insert_someday in
-  Command.basic ~summary:"Insert things into somday list"
-    (Command.Param.return (Fn.compose Lwt_main.run f))
+  make Db.insert_someday "Insert things into somday list"
+
+let insert_collect_cmd = make Db.collect "Insert into intray"
 
 let insert_action_cmd =
   let open Command.Let_syntax in
@@ -31,7 +36,7 @@ let insert_action_cmd =
     [%map_open
       let project = flag "project" (optional string) ~doc:" Project" in
       let f () =
-        get_text ()
+        get_text None
         >>= fun s ->
         Db.insert_action ?project s >|= fun () -> print_endline "Inserted"
       in

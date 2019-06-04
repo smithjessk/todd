@@ -13,8 +13,11 @@ module Tui_action_for_processed_item : sig
     | Open_link
     | Search
     | Quit
+    | Help
 
   val bindings : t Char.Map.t
+
+  val help : string
 
   val with_prefix_exn : string -> int * t
   (** Takes strings that are maybe a number, then a cmd, and outputs it nicely.
@@ -31,10 +34,13 @@ end = struct
     | Open_link
     | Search
     | Quit
-  [@@deriving variants]
+    | Help
+  [@@deriving variants, sexp_of]
 
   let bindings =
     let to_string = function
+      | Help ->
+          '?'
       | Move_to_maybe ->
           'm'
       | Move_to_someday ->
@@ -63,9 +69,15 @@ end = struct
         ~move_to_actions:(f Move_to_actions) ~delete:(f Delete) ~quit:(f Quit)
         ~copy_to_clipboard:(f Copy_to_clipboard) ~jump_to_next:(f Jump_to_next)
         ~jump_to_previous:(f Jump_to_previous) ~open_link:(f Open_link)
-        ~search:(f Search)
+        ~search:(f Search) ~help:(f Help)
     in
     m
+
+  let help =
+    bindings |> Map.to_alist
+    |> List.map ~f:(fun (char, t) ->
+           sprintf "%c %s" char (t |> sexp_of_t |> Sexp.to_string_hum) )
+    |> String.concat ~sep:"\n"
 
   let with_prefix_exn s =
     match Map.find bindings s.[String.length s - 1] with
