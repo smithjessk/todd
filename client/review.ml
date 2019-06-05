@@ -11,7 +11,7 @@ type list_type = Collect | Maybe | Someday | Waiting | Action
 (** produces an offset that's used to find the next item, if any *)
 let handle_item term ~position_prompt reviewing item =
   let {Reviewable.prompt; item} = item in
-  LTerm.clear_screen term
+  LTerm.printl ""
   >>= fun () ->
   let prompt = match prompt with None -> "" | Some s -> sprintf "%s: " s in
   let open LTerm_text in
@@ -21,9 +21,7 @@ let handle_item term ~position_prompt reviewing item =
   let rec loop () =
     (new Ui.read_line_const_prompt_options
        ~term ~prompt:"Action: "
-       ~options:
-         ( Map.keys Tui_action_for_processed_item.bindings
-         |> List.map ~f:Char.to_string ))
+       ~options:(Map.keys Tui_action_for_processed_item.bindings))
       #run_utf8_conv
     >>= fun s ->
     try Tui_action_for_processed_item.with_prefix_exn s |> Lwt.return

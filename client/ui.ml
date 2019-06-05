@@ -15,13 +15,14 @@ module Tui_action_for_processed_item : sig
     | Quit
     | Help
 
-  val bindings : t Char.Map.t
+  val bindings : t String.Map.t
 
   val help : string
 
   val with_prefix_exn : string -> int * t
-  (** Takes strings that are maybe a number, then a cmd, and outputs it nicely.
-  If no number given, the int is 1*)
+  (** Takes strings of the regexp format [1-9]*t
+      where t is a key in [bindings]
+  *)
 end = struct
   type t =
     | Move_to_maybe
@@ -40,31 +41,31 @@ end = struct
   let bindings =
     let to_string = function
       | Help ->
-          '?'
+          "?"
       | Move_to_maybe ->
-          'm'
+          "m"
       | Move_to_someday ->
-          's'
+          "s"
       | Move_to_actions ->
-          'd'
+          "d"
       | Delete ->
-          'x'
+          "x"
       | Copy_to_clipboard ->
-          'y'
+          "y"
       | Jump_to_next ->
-          'j'
+          "j"
       | Jump_to_previous ->
-          'k'
+          "k"
       | Open_link ->
-          'o'
+          "o"
       | Search ->
-          '/'
+          "/"
       | Quit ->
-          'q'
+          "qq"
     in
     let f t m _ = Map.add_exn m ~key:(to_string t) ~data:t in
     let m =
-      Variants.fold ~init:Char.Map.empty ~move_to_maybe:(f Move_to_maybe)
+      Variants.fold ~init:String.Map.empty ~move_to_maybe:(f Move_to_maybe)
         ~move_to_someday:(f Move_to_someday)
         ~move_to_actions:(f Move_to_actions) ~delete:(f Delete) ~quit:(f Quit)
         ~copy_to_clipboard:(f Copy_to_clipboard) ~jump_to_next:(f Jump_to_next)
@@ -75,20 +76,18 @@ end = struct
 
   let help =
     bindings |> Map.to_alist
-    |> List.map ~f:(fun (char, t) ->
-           sprintf "%c %s" char (t |> sexp_of_t |> Sexp.to_string_hum) )
+    |> List.map ~f:(fun (s, t) ->
+           sprintf "%s %s" s (t |> sexp_of_t |> Sexp.to_string_hum) )
     |> String.concat ~sep:"\n"
 
   let with_prefix_exn s =
-    match Map.find bindings s.[String.length s - 1] with
+    let cnt = String.take_while s ~f:Char.is_digit in
+    let cmd = String.drop_prefix s (String.length cnt) in
+    match Map.find bindings cmd with
     | None ->
         raise (Invalid_argument s)
     | Some t -> (
-      match String.length s with
-      | 1 ->
-          (1, t)
-      | _ ->
-          (int_of_string (String.sub s ~pos:0 ~len:(String.length s - 1)), t) )
+      match cnt with "" -> (1, t) | cnt -> (Int.of_string cnt, t) )
 end
 
 class read_line_const_prompt_options ~term ~prompt ~options =
