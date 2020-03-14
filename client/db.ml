@@ -30,6 +30,8 @@ let delete_someday = delete_text_eponymous ~table:"someday"
 
 let delete_maybe = delete_text_eponymous ~table:"maybe"
 
+let delete_another_day = delete_text_eponymous ~table:"another_day"
+
 let delete_waiting_for = delete_text_eponymous ~table:"waiting_for"
 
 let delete_collected_item = delete_text_eponymous ~table:"collected_item"
@@ -107,6 +109,9 @@ let dump_maybe () =
 
 let dump_someday () =
   dump_distinct_strings_from_table ~field:"text" ~table:"someday"
+
+let dump_another_day () =
+  dump_distinct_strings_from_table ~field:"text" ~table:"another_day"
 
 let dump_maybe_and_someday () =
   dump_maybe () >>= fun m -> dump_someday () >|= fun s -> String.Set.union m s

@@ -9,9 +9,14 @@ i don't see that as a problem since reviewing, inserting, and dumping will alway
 
 *)
 let () =
-  Command.group ~summary:"No comment :)"
-    [ ("dump", Dump.cmd)
-    ; ("collect", Insert.insert_collect_cmd) (* i frequently type this *)
-    ; ("insert", Insert.cmd)
-    ; ("review", Review.cmd) ]
-  |> Command.run
+  let cmd =
+    Command.group ~summary:"YAMBROGHINI HIGH RIP YAM$$$"
+      [
+        ("dump", Dump.cmd);
+        ("collect", Insert.insert_collect_cmd) (* i frequently type this *);
+        ("insert", Insert.cmd);
+        ("review", Review.cmd);
+        ("systems", Systems.command);
+      ]
+  in
+  Command.run cmd
