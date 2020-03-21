@@ -15,3 +15,10 @@ let search ~unescaped =
   let text = unescaped |> String.escaped in
   let url = sprintf "https://duckduckgo.com/?q=%s" text in
   Lwt_unix.system (sprintf "firefox \"%s\" &" url)
+
+let play_notification_sound () =
+  Lwt.async (fun () ->
+      (* jsmith: only works on macs :/ *)
+      let command = Lwt_process.shell "afplay ~/bin/notification.mp3" in
+      let status_promise = Lwt_process.exec command in
+      Lwt.map (fun _ -> ()) status_promise)

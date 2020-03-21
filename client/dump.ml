@@ -3,16 +3,17 @@ open Lwt.Infix
 open Todd_common
 
 let dump_collect_box () =
-  Db.dump_collected ()
-  >|= function
+  Db.dump_collected () >|= function
   | [] -> print_endline "Empty"
   | list ->
       List.iteri list ~f:(fun idx item ->
-          printf "[%d]: %s\n" (idx + 1) (Collected_item.text item) )
+          printf "[%d]: %s\n" (idx + 1) (Collected_item.text item))
 
 let dump_collect_cmd =
   Command.basic ~summary:"dump collect box"
-    (Command.Param.return (fun () -> Lwt_main.run (dump_collect_box ())))
+    (Command.Param.return (fun () ->
+         Lwt_main.run (dump_collect_box ());
+         Utils.play_notification_sound ()))
 
 let param f =
   let f () =
@@ -41,17 +42,17 @@ let dump_actions_cmd =
         let open LTerm_text in
         let opener = sprintf "\t[%d]: " n in
         let body = sprintf "%s" hd.text in
-        let msg = eval [B_bold true; S opener; E_bold; S body] in
+        let msg = eval [ B_bold true; S opener; E_bold; S body ] in
         LTerm.printls msg >>= fun () -> print_actions l (n + 1)
   in
   let open Command.Let_syntax in
   Command.basic ~summary:"View actions"
     [%map_open
       let project =
-        flag "project" ~aliases:["p"] (optional string)
+        flag "project" ~aliases:[ "p" ] (optional string)
           ~doc:" case-insensitive substring of project name"
       and text =
-        flag "text" ~aliases:["t"] (optional string)
+        flag "text" ~aliases:[ "t" ] (optional string)
           ~doc:" text. Case insensitive substring search"
       in
       fun () ->
@@ -62,22 +63,23 @@ let dump_actions_cmd =
                     match x.Next_action.project with None -> "" | Some s -> s
                   in
                   Map.update map key ~f:(function
-                    | None -> [x]
-                    | Some l -> x :: l ) )
+                    | None -> [ x ]
+                    | Some l -> x :: l))
           >>= Map.fold ~init:(Lwt.return ())
                 ~f:(fun ~key:project ~data:l accum ->
-                  accum
-                  >>= fun () ->
+                  accum >>= fun () ->
                   let open LTerm_text in
-                  eval [B_bold true; S (sprintf "[%s]:" project); E_bold]
+                  eval [ B_bold true; S (sprintf "[%s]:" project); E_bold ]
                   |> LTerm.printls
-                  >>= fun () -> print_actions l 0 ) )]
+                  >>= fun () -> print_actions l 0) )]
 
 let cmd =
   Command.group ~summary:"Different ways to dump stuff"
-    [ ("collect", dump_collect_cmd)
-    ; ("projects", dump_projects_cmd)
-    ; ("actions", dump_actions_cmd)
-    ; ("waiting-for", dump_waiting_for_cmd)
-    ; ("maybe", dump_maybe_cmd)
-    ; ("someday", dump_someday_cmd) ]
+    [
+      ("collect", dump_collect_cmd);
+      ("projects", dump_projects_cmd);
+      ("actions", dump_actions_cmd);
+      ("waiting-for", dump_waiting_for_cmd);
+      ("maybe", dump_maybe_cmd);
+      ("someday", dump_someday_cmd);
+    ]
