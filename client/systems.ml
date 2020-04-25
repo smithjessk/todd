@@ -6,6 +6,8 @@ module System = struct
     n : int;
     done_ : int;
     description : string; [@default "migrated"]
+    display_on : Day_of_week.Set.t;
+        [@default Day_of_week.(all |> Set.of_list)]
   }
   [@@deriving sexp]
 
@@ -15,6 +17,7 @@ module System = struct
       done_ = t.done_ + 1;
       description = t.description;
       last_done = Some (Date.today ~zone:(Lazy.force Time.Zone.local));
+      display_on = t.display_on;
     }
 
   let progress_bar t =
@@ -72,7 +75,7 @@ module Systems = struct
   (** [loda_exn mode] loads a sexp file from [(path mode)] *)
   let load_exn mode = Sexp.load_sexp (path mode) |> t_of_sexp
 
-  let plant t ~name ~n ~description =
+  let plant t ~name ~n ~description ~display_on =
     match Map.find t.systems name with
     | Some _ ->
         raise_s
@@ -83,7 +86,7 @@ module Systems = struct
     | None ->
         let systems =
           Map.add_exn t.systems ~key:name
-            ~data:{ last_done = None; description; done_ = 0; n }
+            ~data:{ last_done = None; description; done_ = 0; n; display_on }
         in
         { systems }
 
@@ -125,6 +128,7 @@ module Systems = struct
               done_ = new_done;
               n = system.n;
               description = system.description;
+              display_on = system.display_on;
             })
     in
     { systems }
@@ -165,10 +169,17 @@ let plant =
       and todo = flag "todo" (required int) ~doc:" num to do"
       and description =
         flag "description" (required string) ~doc:" desc, eg min action"
+      and display_on =
+        flag_optional_with_default_doc "on"
+          (sexp_conv Day_of_week.Set.t_of_sexp)
+          Day_of_week.Set.sexp_of_t
+          ~default:Day_of_week.(Set.of_list all)
+          ~doc:"days on which to display the goal in t s u"
       in
 
       fun () ->
-        load_save ~show:true ~f:(Systems.plant ~name ~n:todo ~description)]
+        load_save ~show:true
+          ~f:(Systems.plant ~name ~n:todo ~description ~display_on)]
 
 let print_one systems ~name =
   Out_channel.(
@@ -260,6 +271,10 @@ let undone =
                  not
                    (Date.equal date
                       (Date.today ~zone:(Lazy.force Time.Zone.local))))
+         |> Map.filter ~f:(fun system ->
+                Set.mem system.display_on
+                  ( Date.today ~zone:(Lazy.force Time.Zone.local)
+                  |> Date.day_of_week ))
          |> Map.iteri ~f:(fun ~key:name ~data:system ->
                 Out_channel.(
                   printf "%s: %s\n" name (System.progress_bar system);

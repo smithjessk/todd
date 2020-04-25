@@ -17,8 +17,11 @@ let make insert s =
       in
       let f () = get_text batched_text >>= insert in
       fun () ->
-        let () = Lwt_main.run (f ()) in
-        Utils.play_notification_sound ()]
+        let loop () =
+          let () = Lwt_main.run (f ()) in
+          Utils.play_notification_sound ()
+        in
+        loop ()]
 
 let insert_waiting_cmd =
   make Db.insert_waiting_for "Insert things into waiting for list"
@@ -29,16 +32,7 @@ let insert_someday_cmd = make Db.insert_someday "Insert things into somday list"
 
 let insert_collect_cmd = make Db.collect "Insert into intray"
 
-let insert_action_cmd =
-  let open Command.Let_syntax in
-  Command.basic ~summary:"Insert action into a project"
-    [%map_open
-      let project = flag "project" (optional string) ~doc:" Project" in
-      let f () =
-        get_text None >>= fun s ->
-        Db.insert_action ?project s >|= fun () -> print_endline "Inserted"
-      in
-      Fn.compose Lwt_main.run f]
+let insert_action_cmd = make Db.insert_action "Insert action into a project"
 
 let cmd =
   Command.group ~summary:"Directly insert things into lists"

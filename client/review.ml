@@ -138,8 +138,13 @@ let handle_item term ~position_prompt reviewing item =
   loop () >>= fun x ->
   let del_or_no_op inserted_to () =
     match inserted_to with
-    | x when equal_list_type x reviewing -> Lwt.return 1
-    | _ -> delete item >>= fun () -> Lwt.return 1
+    | x when equal_list_type x reviewing ->
+        Utils.play_notification_sound ();
+        Lwt.return 1
+    | _ ->
+        delete item >>= fun () ->
+        Utils.play_notification_sound ();
+        Lwt.return 1
   in
   match x with
   | _, Review_action.Move_to_maybe ->
@@ -150,8 +155,12 @@ let handle_item term ~position_prompt reviewing item =
       Db.insert_someday item >>= del_or_no_op Someday
   | _, Move_to_actions ->
       Next_action_builder.create term >>= fun na ->
-      Db.define na >>= del_or_no_op Action
-  | _, Delete -> delete item >|= fun () -> 1
+      Db.define na >>= (* jsmith: for multiple actions *)
+                   fun () -> Lwt.return 0
+  | _, Delete ->
+      delete item >|= fun () ->
+      Utils.play_notification_sound ();
+      1
   | _, Copy_to_clipboard ->
       Utils.copy ~unescaped:item >>= fun _ ->
       LTerm.printl "Copied" >|= fun () -> 0
