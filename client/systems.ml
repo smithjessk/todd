@@ -217,8 +217,8 @@ let peep =
 let raw =
   Command.basic ~summary:"directly edit a goal's value"
     [%map_open.Command
-      let name = flag "name" (required string) ~doc:" system name"
-      and new_done = flag "new-done" (required int) ~doc:" value to set" in
+      let name = anon ("name" %: string) 
+      and new_done = anon ("new-done" %:  int) in
       fun () ->
         load_save ~show:false ~f:(fun sys ->
             let sys = Systems.set ~name ~new_done sys in

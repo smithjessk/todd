@@ -32,7 +32,25 @@ let insert_someday_cmd = make Db.insert_someday "Insert things into somday list"
 
 let insert_collect_cmd = make Db.collect "Insert into intray"
 
-let insert_action_cmd = make Db.insert_action "Insert action into a project"
+let insert_action_cmd =
+  Command.basic ~summary:"insert an action into a project"
+    [%map_open.Command
+      let () = return () in
+      (* jsmith: what if the project doesn't exist? should define it! *)
+      fun () ->
+        (let%lwt lterm = Lazy.force LTerm.stdout in
+         let%lwt next_action = Next_action_builder.create lterm in
+         Db.insert_action_and_upsert_normalized_project next_action)
+        |> Lwt_main.run]
+
+let insert_jar_of_awesome_cmd =
+  make Db.insert_jar_of_awesome "Insert into the jar of awesome"
+
+let insert_bucket_list_cmd =
+  make Db.insert_bucket_list "Insert into your bucket list"
+
+let insert_outcome_cmd =
+  make (Db.insert_outcome ~type_:`Insert) "Insert into your outcomes list"
 
 let cmd =
   Command.group ~summary:"Directly insert things into lists"
@@ -41,4 +59,7 @@ let cmd =
       ("maybe", insert_maybe_cmd);
       ("someday", insert_someday_cmd);
       ("action", insert_action_cmd);
+      ("jar-of-awesome", insert_jar_of_awesome_cmd);
+      ("bucket-list", insert_bucket_list_cmd);
+      ("outcome", insert_outcome_cmd);
     ]

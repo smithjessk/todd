@@ -40,6 +40,7 @@ module Review_action = struct
     | Move_to_maybe
     | Move_to_someday
     | Move_to_actions
+    | Move_to_jar_of_awesome
     | Delete
     | Copy_to_clipboard
     | Jump_to_next
@@ -56,6 +57,7 @@ module Review_action = struct
       | Move_to_maybe -> "m"
       | Move_to_someday -> "s"
       | Move_to_actions -> "d"
+      | Move_to_jar_of_awesome -> "a"
       | Delete -> "x"
       | Copy_to_clipboard -> "y"
       | Jump_to_next -> "j"
@@ -72,6 +74,7 @@ module Review_action = struct
         ~copy_to_clipboard:(f Copy_to_clipboard) ~jump_to_next:(f Jump_to_next)
         ~jump_to_previous:(f Jump_to_previous) ~open_link:(f Open_link)
         ~search:(f Search) ~help:(f Help)
+        ~move_to_jar_of_awesome:(f Move_to_jar_of_awesome)
     in
     m
 
@@ -107,7 +110,15 @@ module Review_action = struct
         match cnt with "" -> (1, t) | cnt -> (Int.of_string cnt, t) )
 end
 
-type list_type = Collect | Maybe | Someday | Waiting | Action
+type list_type =
+  | Collect
+  | Maybe
+  | Someday
+  | Waiting
+  | Action
+  | Bucket_list
+  | Jar_of_awesome
+  | Projects
 [@@deriving equal]
 
 (** produces an offset that's used to find the next item, if any *)
@@ -129,11 +140,14 @@ let handle_item term ~position_prompt reviewing item =
   in
   let delete =
     match reviewing with
+    | Projects -> Db.delete_project
     | Someday -> Db.delete_someday
     | Action -> Db.delete_action_with_text
     | Maybe -> Db.delete_maybe
     | Waiting -> Db.delete_waiting_for
     | Collect -> Db.delete_collected_item
+    | Bucket_list -> Db.delete_bucket_list
+    | Jar_of_awesome -> Db.delete_jar_of_awesome
   in
   loop () >>= fun x ->
   let del_or_no_op inserted_to () =
@@ -150,6 +164,13 @@ let handle_item term ~position_prompt reviewing item =
   | _, Review_action.Move_to_maybe ->
       let item = sprintf "%s%s" prompt item in
       Db.insert_maybe item >>= del_or_no_op Maybe
+  | _, Review_action.Move_to_jar_of_awesome ->
+      let item =
+        let zone = Core.Time.Zone.local |> Lazy.force in
+        let date = Date.today ~zone |> Date.to_string in
+        sprintf "%s: %s%s" date prompt item
+      in
+      Db.insert_jar_of_awesome item >>= del_or_no_op Jar_of_awesome
   | _, Move_to_someday ->
       let item = sprintf "%s%s" prompt item in
       Db.insert_someday item >>= del_or_no_op Someday
@@ -302,6 +323,12 @@ let cmd =
       review_cmd "waiting"
         ~dump:(Fn.compose make_text_items_reviewables Db.dump_waiting_for)
         ~reviewing:Waiting;
+      review_cmd "bucket-list"
+        ~dump:(Fn.compose make_text_items_reviewables Db.dump_bucket_list)
+        ~reviewing:Bucket_list;
+      review_cmd "outcomes"
+        ~dump:(Fn.compose make_text_items_reviewables Db.dump_projects)
+        ~reviewing:Projects;
       review_cmd "collect"
         ~dump:(fun () ->
           Db.dump_collected ()

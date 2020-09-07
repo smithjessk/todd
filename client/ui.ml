@@ -14,7 +14,7 @@ class read_line_const_prompt_options ~term ~prompt ~options =
         List.filter ~f:(fun opt -> Zed_string.starts_with opt ~prefix) options
       in
       self#set_completion 0
-        (List.map ~f:(fun opt -> (opt, Zed_string.of_utf8 " ")) options)
+        (List.map ~f:(fun opt -> (opt, Zed_string.of_utf8 "")) options)
 
     initializer
     self#set_prompt
@@ -35,7 +35,7 @@ class read_line_const_prompt ~term ~prompt =
     self#set_prompt
       (S.const
          (let open LTerm_text in
-         eval [B_bold true; S prompt; E_bold]))
+         eval [ B_bold true; S prompt; E_bold ]))
 
     method! show_box = false
 

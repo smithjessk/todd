@@ -1,4 +1,4 @@
-type t
+type t [@@deriving sexp]
 
 val t : t Caqti_type.t
 

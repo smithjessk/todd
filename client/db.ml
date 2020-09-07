@@ -11,7 +11,7 @@ let insert_text_eponymous ~table text =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
       let s = sprintf "INSERT INTO %s (text) VALUES((?))" table in
       let req = Caqti_request.exec Caqti_type.string s in
-      Db.exec req text >>= Caqti_lwt.or_fail )
+      Db.exec req text >>= Caqti_lwt.or_fail)
 
 let insert_waiting_for = insert_text_eponymous ~table:"waiting_for"
 
@@ -19,12 +19,30 @@ let insert_maybe = insert_text_eponymous ~table:"maybe"
 
 let insert_someday = insert_text_eponymous ~table:"someday"
 
+let insert_jar_of_awesome = insert_text_eponymous ~table:"jar_of_awesome"
+
+let insert_bucket_list = insert_text_eponymous ~table:"bucket_list"
+
+let insert_outcome ~type_ name =
+  conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
+      let on_conflict_string =
+        match type_ with
+        | `Upsert -> "ON CONFLICT (name) DO NOTHING"
+        | `Insert -> ""
+      in
+      let s =
+        sprintf "INSERT INTO %s (name) VALUES((?)) %s" "projects"
+          on_conflict_string
+      in
+      let req = Caqti_request.exec Caqti_type.string s in
+      Db.exec req name >>= Caqti_lwt.or_fail)
+
 (** Delete some text from a specified table's 'text' column. *)
 let delete_text_eponymous ~table text =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
       let s = sprintf "DELETE FROM %s WHERE text=(?)" table in
       let req = Caqti_request.exec Caqti_type.string s in
-      Db.exec req text >>= Caqti_lwt.or_fail )
+      Db.exec req text >>= Caqti_lwt.or_fail)
 
 let delete_someday = delete_text_eponymous ~table:"someday"
 
@@ -36,14 +54,27 @@ let delete_waiting_for = delete_text_eponymous ~table:"waiting_for"
 
 let delete_collected_item = delete_text_eponymous ~table:"collected_item"
 
-let insert_action ?(project = "") text =
+let delete_bucket_list = delete_text_eponymous ~table:"bucket_list"
+
+let delete_jar_of_awesome = delete_text_eponymous ~table:"jar_of_awesome"
+
+let delete_project name =
+  conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
+      let s = sprintf "DELETE FROM %s WHERE name=(?)" "projects" in
+      let req = Caqti_request.exec Caqti_type.string s in
+      Db.exec req name >>= Caqti_lwt.or_fail)
+
+let insert_action_and_upsert_normalized_project next_action =
+  let { Next_action.text; project } = next_action in
+  let normalized_project = Option.value project ~default:"" in
+  let%lwt () = insert_outcome ~type_:`Upsert normalized_project in
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
       let req =
         Caqti_request.exec
           Caqti_type.(tup2 string string)
           "INSERT INTO next_action (text, project) VALUES ((?), (?))"
       in
-      Db.exec req (text, project) >>= Caqti_lwt.or_fail )
+      Db.exec req (text, normalized_project) >>= Caqti_lwt.or_fail)
 
 let find_actions ?(project_substring = "") ?(text_substring = "") () =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
@@ -59,21 +90,19 @@ let find_actions ?(project_substring = "") ?(text_substring = "") () =
                 String.is_substring (s |> String.lowercase)
                   ~substring:(sub |> String.lowercase)
               in
-              f p ~sub:project_substring && f t ~sub:text_substring )
+              f p ~sub:project_substring && f t ~sub:text_substring)
       >|= List.map ~f:(fun (project, text) ->
               let project = match project with "" -> None | s -> Some s in
-              Next_action.create ~project ~text ) )
+              Next_action.create ~project ~text))
 
 let delete_action_with_text text =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
-      Db.start () >>= Caqti_lwt.or_fail
-      >>= fun () ->
+      Db.start () >>= Caqti_lwt.or_fail >>= fun () ->
       let req =
         Caqti_request.exec Caqti_type.string
           "DELETE FROM next_action WHERE text=(?)"
       in
-      Db.exec req text >>= Caqti_lwt.or_fail >>= Db.commit
-      >>= Caqti_lwt.or_fail )
+      Db.exec req text >>= Caqti_lwt.or_fail >>= Db.commit >>= Caqti_lwt.or_fail)
 
 let collect s =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
@@ -81,7 +110,7 @@ let collect s =
         Caqti_request.exec Caqti_type.string
           "INSERT INTO collected_item (text) VALUES (?)"
       in
-      Db.exec req s >>= Caqti_lwt.or_fail )
+      Db.exec req s >>= Caqti_lwt.or_fail)
 
 let dump_collected () =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
@@ -90,8 +119,7 @@ let dump_collected () =
           "SELECT * from collected_item ORDER BY created_at"
       in
       Db.collect_list req () >>= Caqti_lwt.or_fail
-      >|= List.map ~f:(fun t -> Todd_common.Collected_item.create t Ptime.epoch)
-  )
+      >|= List.map ~f:(fun t -> Todd_common.Collected_item.create t Ptime.epoch))
 
 let dump_distinct_strings_from_table ~field ~table =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
@@ -99,10 +127,10 @@ let dump_distinct_strings_from_table ~field ~table =
         Caqti_request.collect Caqti_type.unit Caqti_type.string
           (sprintf "SELECT DISTINCT %s FROM %s" field table)
       in
-      Db.collect_list req () >>= Caqti_lwt.or_fail >|= String.Set.of_list )
+      Db.collect_list req () >>= Caqti_lwt.or_fail >|= String.Set.of_list)
 
 let dump_projects () =
-  dump_distinct_strings_from_table ~field:"project" ~table:"next_action"
+  dump_distinct_strings_from_table ~field:"name" ~table:"projects"
 
 let dump_maybe () =
   dump_distinct_strings_from_table ~field:"text" ~table:"maybe"
@@ -110,11 +138,18 @@ let dump_maybe () =
 let dump_someday () =
   dump_distinct_strings_from_table ~field:"text" ~table:"someday"
 
+let dump_jar_of_awesome () =
+  dump_distinct_strings_from_table ~field:"text" ~table:"jar_of_awesome"
+
+let dump_bucket_list () =
+  dump_distinct_strings_from_table ~field:"text" ~table:"bucket_list"
+
 let dump_another_day () =
   dump_distinct_strings_from_table ~field:"text" ~table:"another_day"
 
 let dump_maybe_and_someday () =
-  dump_maybe () >>= fun m -> dump_someday () >|= fun s -> String.Set.union m s
+  dump_maybe () >>= fun m ->
+  dump_someday () >|= fun s -> String.Set.union m s
 
 let dump_waiting_for () =
   dump_distinct_strings_from_table ~field:"text" ~table:"waiting_for"
@@ -146,14 +181,12 @@ let upload_next_action (module Db : Caqti_lwt.CONNECTION) a =
 
 let define ?item na =
   conn_then_exec_exn (fun (module Db : Caqti_lwt.CONNECTION) ->
-      Db.start () >>= Caqti_lwt.or_fail
-      >>= fun () ->
+      Db.start () >>= Caqti_lwt.or_fail >>= fun () ->
       let db = (module Db : Caqti_lwt.CONNECTION) in
-      upload_next_action db na
-      >>= fun () ->
+      upload_next_action db na >>= fun () ->
       ( match item with
       | None -> Lwt.return ()
       | Some item ->
           delete_collected_item_already_connected db item >>= Caqti_lwt.or_fail
       )
-      >>= fun () -> Db.commit () >>= Caqti_lwt.or_fail )
+      >>= fun () -> Db.commit () >>= Caqti_lwt.or_fail)
